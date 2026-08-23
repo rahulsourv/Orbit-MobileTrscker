@@ -10,6 +10,7 @@ import {
   BatteryWarning,
   ArrowUpRight,
   Radar,
+  RefreshCw,
 } from "lucide-react";
 
 import { Button, Card, CardHeader, EmptyState, Skeleton, Badge } from "@/components/ui";
@@ -20,6 +21,8 @@ import { MapLegend } from "@/components/map/MapLegend";
 import { useAuthStore } from "@/store/auth.store";
 import { useDeviceStore } from "@/store/device.store";
 import { useNotificationStore } from "@/store/notification.store";
+import { useConnectionStore } from "@/store/connection.store";
+import { useThisDeviceStore } from "@/store/thisDevice.store";
 import { greeting, relativeTime } from "@/lib/format";
 import { notificationMeta, TONE_CLASS } from "@/lib/constants";
 import { cn } from "@/lib/cn";
@@ -50,8 +53,36 @@ export default function DashboardPage() {
   const devices = useDeviceStore((state) => state.devices);
   const loading = useDeviceStore((state) => state.loading);
   const notifications = useNotificationStore((state) => state.notifications);
+  const fetchDevices = useDeviceStore((state) => state.fetchDevices);
+  const fetchConnections = useConnectionStore((state) => state.fetchAll);
+  const thisComputerTracking = useThisDeviceStore((state) => state.tracking);
+  const reportThisComputer = useThisDeviceStore((state) => state.reportOnce);
 
   const [addOpen, setAddOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshedAt, setRefreshedAt] = useState(null);
+
+  /**
+   * Manual refresh.
+   *
+   * Pulls the newest positions the server holds, and - if this computer is
+   * tracking - pushes its own position first, so "latest" includes the machine
+   * doing the asking rather than everything except it.
+   */
+  const refreshNow = async () => {
+    setRefreshing(true);
+
+    try {
+      if (thisComputerTracking) {
+        await reportThisComputer().catch(() => {});
+      }
+
+      await Promise.all([fetchDevices(), fetchConnections()]);
+      setRefreshedAt(new Date().toLocaleTimeString());
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const stats = useMemo(() => {
     const online = devices.filter((device) => device.isOnline).length;
@@ -80,9 +111,20 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        <Button onClick={() => setAddOpen(true)}>
-          <Plus className="size-4" /> Add device
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            onClick={refreshNow}
+            loading={refreshing}
+            title={refreshedAt ? `Last refreshed ${refreshedAt}` : "Refresh now"}
+          >
+            {!refreshing && <RefreshCw className="size-4" />}
+            Refresh
+          </Button>
+          <Button onClick={() => setAddOpen(true)}>
+            <Plus className="size-4" /> Add device
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

@@ -1,10 +1,11 @@
 import { useCallback, useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { OrbitMap, LayerSwitcher } from "../components/OrbitMap";
 import { PulseDot } from "../components/ui";
 import { useDashboard } from "../context/DashboardContext";
+import { useOrbit } from "../context/OrbitContext";
 import * as api from "../lib/api";
 import * as tracker from "../tracking/tracker";
 import { colors, radius, spacing } from "../theme";
@@ -22,7 +23,8 @@ const MODES = [
 ];
 
 export const MapScreen = ({ navigation }) => {
-  const { devices, sharedDevices, geofences, connected } = useDashboard();
+  const { devices, sharedDevices, geofences, connected, refresh } = useDashboard();
+  const { tracking, reportOnce } = useOrbit();
 
   const [showGeofences, setShowGeofences] = useState(true);
   const [layer, setLayer] = useState("dark");
@@ -30,6 +32,7 @@ export const MapScreen = ({ navigation }) => {
   const [focus, setFocus] = useState(null);
   const [fitToken, setFitToken] = useState(0);
   const [selectedId, setSelectedId] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Directions.
   const [destination, setDestination] = useState(null);
@@ -52,6 +55,27 @@ export const MapScreen = ({ navigation }) => {
 
   const online = positioned.filter((device) => device.isOnline).length;
   const selected = allDevices.find((device) => device.id === selectedId);
+
+  /**
+   * Manual refresh.
+   *
+   * Pulls the newest positions the server holds, and - if this phone is
+   * tracking - pushes its own position first, so "latest" includes the device
+   * doing the asking rather than everything except it.
+   */
+  const refreshNow = async () => {
+    setRefreshing(true);
+
+    try {
+      if (tracking) {
+        await reportOnce().catch(() => {});
+      }
+
+      await refresh();
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const focusDevice = (deviceId) => {
     const device = allDevices.find((entry) => entry.id === deviceId);
@@ -164,6 +188,17 @@ export const MapScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.actions}>
+          <Pressable
+            onPress={refreshNow}
+            disabled={refreshing}
+            style={styles.iconButton}
+          >
+            {refreshing ? (
+              <ActivityIndicator size="small" color={colors.accent} />
+            ) : (
+              <Ionicons name="refresh" size={18} color={colors.inkMuted} />
+            )}
+          </Pressable>
           <Pressable
             onPress={() => setLayersOpen((value) => !value)}
             style={[styles.iconButton, layersOpen && styles.iconButtonActive]}
