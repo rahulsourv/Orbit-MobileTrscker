@@ -8,6 +8,7 @@ const {
   registerLimiter,
   loginLimiter,
   refreshLimiter,
+  passwordChangeLimiter,
 } = require("../middleware/rateLimit.middleware");
 
 const router = express.Router();
@@ -54,6 +55,35 @@ router.post("/logout", validate(refreshSchema), authController.logout);
 router.post("/logout-all", requireAuth, authController.logoutAll);
 
 router.get("/me", requireAuth, authController.me);
+
+const updateProfileSchema = z.object({
+  name: z.string().trim().min(2, "Name must be at least 2 characters").max(50),
+});
+
+router.patch(
+  "/me",
+  requireAuth,
+  validate(updateProfileSchema),
+  authController.updateProfile
+);
+
+// The current password is required even with a valid session, so an unlocked
+// borrowed device cannot quietly take the account.
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Your current password is required"),
+  newPassword: z
+    .string()
+    .min(8, "Password must be at least 8 characters long")
+    .max(128),
+});
+
+router.post(
+  "/change-password",
+  requireAuth,
+  passwordChangeLimiter,
+  validate(changePasswordSchema),
+  authController.changePassword
+);
 router.get("/sessions", requireAuth, authController.listSessions);
 
 module.exports = router;

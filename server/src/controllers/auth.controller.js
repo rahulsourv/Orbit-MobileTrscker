@@ -124,7 +124,48 @@ const listSessions = async (req, res, next) => {
   }
 };
 
+const updateProfile = async (req, res, next) => {
+  try {
+    const user = await authService.updateProfile(req.user.id, req.body);
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated",
+      data: { user },
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const changePassword = async (req, res, next) => {
+  try {
+    const session = await authService.changePassword(
+      req.user.id,
+      req.body,
+      requestContext(req)
+    );
+
+    // Every session was just revoked, so the caller is handed a fresh pair
+    // through the same path a login uses - otherwise changing your password
+    // would sign you out of the client you changed it from.
+    return sendSession(req, res, 200, session);
+  } catch (error) {
+    return next(error);
+  }
+};
+
 const me = async (req, res) =>
   res.status(200).json({ success: true, data: { user: req.user } });
 
-module.exports = { register, login, refresh, logout, logoutAll, listSessions, me };
+module.exports = {
+  register,
+  login,
+  refresh,
+  logout,
+  logoutAll,
+  listSessions,
+  updateProfile,
+  changePassword,
+  me,
+};

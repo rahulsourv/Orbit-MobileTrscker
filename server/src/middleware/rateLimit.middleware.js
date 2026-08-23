@@ -121,8 +121,18 @@ const routingLimiter = createLimiter({
   keyGenerator: (req) => (req.user ? `user:${req.user.id}` : clientIp(req)),
 });
 
+// Guessing the current password is the attack here, so this is throttled like
+// a login rather than like an ordinary authenticated write.
+const passwordChangeLimiter = createLimiter({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  message: "Too many password change attempts. Try again in a few minutes.",
+  keyGenerator: (req) => (req.user ? `user:${req.user.id}` : clientIp(req)),
+});
+
 module.exports = {
   registerLimiter,
+  passwordChangeLimiter,
   connectionRequestLimiter,
   routingLimiter,
   loginLimiter,

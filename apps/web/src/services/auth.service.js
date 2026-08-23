@@ -30,3 +30,18 @@ export const logoutEverywhere = async () => {
 export const me = () => api.get("/auth/me");
 
 export const listSessions = () => api.get("/auth/sessions");
+
+export const updateProfile = (name) => api.patch("/auth/me", { name });
+
+export const changePassword = async (currentPassword, newPassword) => {
+  const data = await api.post("/auth/change-password", {
+    currentPassword,
+    newPassword,
+  });
+
+  // Changing a password revokes every session, so the fresh pair returned here
+  // has to replace what is held or this tab signs itself out.
+  setAccessToken(data.accessToken);
+
+  return data.user;
+};

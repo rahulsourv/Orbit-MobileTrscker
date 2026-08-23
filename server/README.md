@@ -75,6 +75,8 @@ All responses share one envelope: `{ success, message?, data?, errors? }`.
 | POST | `/logout` | refresh token | End this session |
 | POST | `/logout-all` | user | End every session |
 | GET | `/me` | user | Current user |
+| PATCH | `/me` | user | Update your name |
+| POST | `/change-password` | user | Change password; revokes every session and issues a fresh pair |
 | GET | `/sessions` | user | Where the account is signed in |
 
 ### Devices — `/api/devices`
@@ -219,4 +221,9 @@ Argon2 password hashing · JWT access tokens · refresh-token rotation with reus
 
 ## Not built yet
 
-Email verification (the `emailVerified` field exists but nothing sets it), password reset, and an automated test suite — the API was verified end to end manually against a live database and Socket.IO server.
+**Password reset ("forgot password") and email verification.** Both need to
+send mail to an address nobody is signed in to, so they need an email provider -
+there is no way to do either honestly without one. Changing a password while
+signed in *is* implemented, and requires the current password.
+
+An automated test suite — the API was verified end to end manually against a live database and Socket.IO server.

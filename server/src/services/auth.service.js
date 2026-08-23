@@ -121,15 +121,30 @@ const rotateRefreshToken = async (rawToken, context = {}) => {
     throw new AppError("Invalid or expired refresh token", 401);
   }
 
-  // A correctly signed token that was already rotated or revoked suggests the
-  // token leaked, so every session for that user is dropped.
   if (!stored.isActive()) {
-    await RefreshToken.updateMany(
-      { userId: stored.userId, revokedAt: null },
-      { $set: { revokedAt: new Date() } }
-    );
+    /**
+     * Only a *rotated* token being presented again is evidence of theft.
+     *
+     * replacedByTokenHash is set exactly when rotation swapped this token for
+     * a newer one, so seeing it again means two parties hold the same token and
+     * every session should go.
+     *
+     * A token revoked without a replacement was retired deliberately - a
+     * logout, a sign-out-everywhere, a password change. Treating that as a
+     * breach was actively harmful: after changing your password, the first
+     * stale client to retry would revoke the brand-new session you were still
+     * using, logging you out of the very client that made the change.
+     */
+    if (stored.replacedByTokenHash) {
+      await RefreshToken.updateMany(
+        { userId: stored.userId, revokedAt: null },
+        { $set: { revokedAt: new Date() } }
+      );
 
-    throw new AppError("Refresh token has been revoked", 401);
+      throw new AppError("Refresh token has been revoked", 401);
+    }
+
+    throw new AppError("Invalid or expired refresh token", 401);
   }
 
   const user = await User.findById(payload.userId);
@@ -175,6 +190,72 @@ const revokeAllSessions = async (userId) => {
   return { revoked: result.modifiedCount };
 };
 
+const updateProfile = async (userId, { name }) => {
+  const user = await User.findById(userId);
+
+  if (!user) {
+    throw new AppError("Account not found", 404);
+  }
+
+  if (name !== undefined) {
+    user.name = name;
+  }
+
+  await user.save();
+
+  return toPublicUser(user);
+};
+
+/**
+ * Changing a password.
+ *
+ * The current password is required even though the caller already holds a
+ * valid session: it is what stops a borrowed, unlocked device from silently
+ * taking the account away from its owner.
+ *
+ * Every existing session is then revoked, because the usual reason to change a
+ * password is that someone else might know the old one - leaving their session
+ * alive would defeat the whole exercise. A fresh pair is issued so the client
+ * doing the changing stays signed in.
+ */
+const changePassword = async (userId, { currentPassword, newPassword }, context = {}) => {
+  const user = await User.findById(userId);
+
+  if (!user) {
+    throw new AppError("Account not found", 404);
+  }
+
+  const valid = await verifyPassword(user.passwordHash, currentPassword);
+
+  if (!valid) {
+    throw new AppError("Your current password is incorrect", 401);
+  }
+
+  if (await verifyPassword(user.passwordHash, newPassword)) {
+    throw new AppError("Your new password must be different", 400);
+  }
+
+  user.passwordHash = await hashPassword(newPassword);
+  await user.save();
+
+  await RefreshToken.updateMany(
+    { userId: user._id, revokedAt: null },
+    { $set: { revokedAt: new Date() } }
+  );
+
+  const { accessToken, refreshToken } = await issueTokens(user, context);
+
+  require("./notification.service").createNotification({
+    userId: user._id,
+    type: "NEW_LOGIN",
+    title: "Your password was changed",
+    message:
+      "Every other session was signed out. If this was not you, change it again immediately.",
+  });
+
+  return { user: toPublicUser(user), accessToken, refreshToken };
+};
+
 // Lets the user see where they are signed in. The token hash is never part of
 // the response - only the metadata recorded alongside it.
 const listSessions = async (userId) => {
@@ -200,5 +281,7 @@ module.exports = {
   logoutUser,
   revokeAllSessions,
   listSessions,
+  updateProfile,
+  changePassword,
   toPublicUser,
 };

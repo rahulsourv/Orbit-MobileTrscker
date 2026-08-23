@@ -48,6 +48,22 @@ export const useAuthStore = create((set, get) => ({
     return get().login({ email: payload.email, password: payload.password });
   },
 
+  updateProfile: async (name) => {
+    const data = await authService.updateProfile(name);
+
+    set({ user: data.user });
+
+    return data.user;
+  },
+
+  changePassword: async (currentPassword, newPassword) => {
+    const user = await authService.changePassword(currentPassword, newPassword);
+
+    set({ user });
+
+    return user;
+  },
+
   logout: async () => {
     await authService.logout();
     set({ user: null, status: "anonymous" });

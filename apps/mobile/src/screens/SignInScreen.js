@@ -13,7 +13,7 @@ import { Banner, Button, Field, Input, OrbitMark } from "../components/ui";
 import { useOrbit } from "../context/OrbitContext";
 import { colors, radius, spacing } from "../theme";
 
-export const SignInScreen = () => {
+export const SignInScreen = ({ onSignUp }) => {
   const { signIn, apiUrl, changeApiUrl } = useOrbit();
 
   const [email, setEmail] = useState("");
@@ -93,6 +93,12 @@ export const SignInScreen = () => {
           disabled={!email || !password}
         />
 
+        <Pressable onPress={onSignUp} style={styles.switchLink}>
+          <Text style={styles.switchText}>
+            New to Orbit? <Text style={styles.switchAccent}>Create an account</Text>
+          </Text>
+        </Pressable>
+
         {/* A phone cannot reach the laptop's localhost, and this app is meant
             to point at a deployed API too, so the server has to be editable
             without rebuilding. */}
@@ -150,6 +156,9 @@ const styles = StyleSheet.create({
     marginTop: spacing(2),
     textAlign: "center",
   },
+  switchLink: { paddingVertical: spacing(5), alignItems: "center" },
+  switchText: { fontSize: 13, color: colors.inkMuted },
+  switchAccent: { color: colors.accent, fontWeight: "600" },
   serverToggle: { paddingVertical: spacing(4), alignItems: "center" },
   serverToggleText: { fontSize: 13, color: colors.inkMuted },
   serverBox: {

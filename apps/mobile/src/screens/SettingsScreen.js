@@ -27,6 +27,8 @@ export const SettingsScreen = ({ navigation }) => {
   const {
     user,
     device,
+    updateProfile,
+    changePassword,
     apiUrl,
     queued,
     reportInterval,
@@ -38,6 +40,46 @@ export const SettingsScreen = ({ navigation }) => {
 
   const [serverDraft, setServerDraft] = useState(apiUrl);
   const [saving, setSaving] = useState(false);
+
+  const [nameDraft, setNameDraft] = useState(user?.name || "");
+  const [savingName, setSavingName] = useState(false);
+
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [savingPassword, setSavingPassword] = useState(false);
+
+  const saveName = async () => {
+    setSavingName(true);
+
+    try {
+      await updateProfile(nameDraft.trim());
+      Alert.alert("Saved", "Your name was updated.");
+    } catch (error) {
+      Alert.alert("Could not save", error.message);
+    } finally {
+      setSavingName(false);
+    }
+  };
+
+  const savePassword = async () => {
+    setSavingPassword(true);
+
+    try {
+      await changePassword(currentPassword, newPassword);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      Alert.alert(
+        "Password changed",
+        "Every other session was signed out."
+      );
+    } catch (error) {
+      Alert.alert("Could not change password", error.message);
+    } finally {
+      setSavingPassword(false);
+    }
+  };
 
   const saveServer = async () => {
     setSaving(true);
@@ -102,10 +144,84 @@ export const SettingsScreen = ({ navigation }) => {
         </View>
 
         <Card>
-          <Text style={styles.cardTitle}>Account</Text>
+          <Text style={styles.cardTitle}>Your details</Text>
           <Divider />
-          <Row label="Signed in as" value={user?.email || "Not signed in"} />
-          <Row label="Name" value={user?.name || "-"} />
+          <Row label="Email" value={user?.email || "Not signed in"} />
+
+          <Field label="Name" hint="How you appear in Orbit.">
+            <Input
+              value={nameDraft}
+              onChangeText={setNameDraft}
+              autoCapitalize="words"
+            />
+          </Field>
+          <Button
+            label="Save name"
+            variant="secondary"
+            onPress={saveName}
+            loading={savingName}
+            disabled={
+              nameDraft.trim().length < 2 || nameDraft.trim() === user?.name
+            }
+          />
+        </Card>
+
+        <Card style={{ marginTop: spacing(4) }}>
+          <Text style={styles.cardTitle}>Password</Text>
+          <Divider />
+          <Text style={styles.note}>
+            Changing it signs out every other session. Your current password is
+            required even though you are signed in — it is what stops someone
+            using an unlocked phone to take the account.
+          </Text>
+
+          <View style={{ marginTop: spacing(4) }}>
+            <Field label="Current password">
+              <Input
+                value={currentPassword}
+                onChangeText={setCurrentPassword}
+                secureTextEntry
+                autoCapitalize="none"
+              />
+            </Field>
+
+            <Field label="New password" hint="At least 8 characters.">
+              <Input
+                value={newPassword}
+                onChangeText={setNewPassword}
+                secureTextEntry
+                autoCapitalize="none"
+              />
+            </Field>
+
+            <Field
+              label="Confirm new password"
+              error={
+                confirmPassword.length > 0 && newPassword !== confirmPassword
+                  ? "These do not match"
+                  : null
+              }
+            >
+              <Input
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry
+                autoCapitalize="none"
+              />
+            </Field>
+
+            <Button
+              label="Change password"
+              variant="secondary"
+              onPress={savePassword}
+              loading={savingPassword}
+              disabled={
+                !currentPassword ||
+                newPassword.length < 8 ||
+                newPassword !== confirmPassword
+              }
+            />
+          </View>
         </Card>
 
         <Card style={{ marginTop: spacing(4) }}>

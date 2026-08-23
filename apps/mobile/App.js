@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ActivityIndicator, StatusBar, StyleSheet, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { NavigationContainer } from "@react-navigation/native";
@@ -12,6 +13,7 @@ import { OrbitProvider, useOrbit } from "./src/context/OrbitContext";
 import { DashboardProvider } from "./src/context/DashboardContext";
 import { RootNavigator, ThisDeviceNavigator, navTheme } from "./src/navigation/RootNavigator";
 import { SignInScreen } from "./src/screens/SignInScreen";
+import { SignUpScreen } from "./src/screens/SignUpScreen";
 import { RegisterDeviceScreen } from "./src/screens/RegisterDeviceScreen";
 import { OrbitMark } from "./src/components/ui";
 import { colors } from "./src/theme";
@@ -25,6 +27,9 @@ import { colors } from "./src/theme";
  */
 const Root = () => {
   const { booting, user, device } = useOrbit();
+  // Which auth screen to show. Local state rather than a route: there are two
+  // of them and no URL to preserve.
+  const [showSignUp, setShowSignUp] = useState(false);
 
   if (booting) {
     return (
@@ -38,7 +43,11 @@ const Root = () => {
   if (!device && !user) {
     return (
       <SafeAreaView style={styles.root}>
-        <SignInScreen />
+        {showSignUp ? (
+          <SignUpScreen onSignIn={() => setShowSignUp(false)} />
+        ) : (
+          <SignInScreen onSignUp={() => setShowSignUp(true)} />
+        )}
       </SafeAreaView>
     );
   }

@@ -273,6 +273,30 @@ export const OrbitProvider = ({ children }) => {
     return signedIn;
   }, []);
 
+  const signUp = useCallback(async (payload) => {
+    const created = await api.signUp(payload);
+
+    setUser(created);
+
+    return created;
+  }, []);
+
+  const updateProfile = useCallback(async (name) => {
+    const data = await api.updateProfile(name);
+
+    setUser(data.user);
+
+    return data.user;
+  }, []);
+
+  const changePassword = useCallback(async (currentPassword, newPassword) => {
+    const updated = await api.changePassword(currentPassword, newPassword);
+
+    setUser(updated);
+
+    return updated;
+  }, []);
+
   const signOut = useCallback(async () => {
     // Signing out stops the tracker but deliberately leaves the device
     // registered: unlinking is a separate, explicit choice.
@@ -481,6 +505,9 @@ export const OrbitProvider = ({ children }) => {
       banner,
       setBanner,
       signIn,
+      signUp,
+      updateProfile,
+      changePassword,
       signOut,
       registerThisDevice,
       unlinkDevice,
@@ -506,6 +533,9 @@ export const OrbitProvider = ({ children }) => {
       changeReportInterval,
       banner,
       signIn,
+      signUp,
+      updateProfile,
+      changePassword,
       signOut,
       registerThisDevice,
       unlinkDevice,

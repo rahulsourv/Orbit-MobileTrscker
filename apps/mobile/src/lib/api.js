@@ -148,6 +148,36 @@ export const login = async (email, password) => {
   return data.user;
 };
 
+// Creating an account, then signing straight in - the API deliberately does
+// not start a session on register, so the first session goes through the
+// normal login path.
+export const signUp = async ({ name, email, password }) => {
+  await request("/auth/register", {
+    method: "POST",
+    body: { name: name.trim(), email: email.trim(), password },
+  });
+
+  return login(email.trim(), password);
+};
+
+export const updateProfile = (name) =>
+  authed("/auth/me", { method: "PATCH", body: { name } });
+
+export const changePassword = async (currentPassword, newPassword) => {
+  const data = await authed("/auth/change-password", {
+    method: "POST",
+    body: { currentPassword, newPassword },
+  });
+
+  // Changing a password revokes every session, so the fresh pair returned here
+  // has to replace what is stored or this app signs itself out.
+  accessToken = data.accessToken;
+  await storage.setRefreshToken(data.refreshToken);
+  await storage.setUser(data.user);
+
+  return data.user;
+};
+
 export const restoreSession = async () => {
   const refreshToken = await storage.getRefreshToken();
 
