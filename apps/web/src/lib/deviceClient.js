@@ -14,6 +14,7 @@ const TOKEN_KEY = "orbit.thisDevice.token";
 const ID_KEY = "orbit.thisDevice.id";
 const IDENTIFIER_KEY = "orbit.thisDevice.identifier";
 const QUEUE_KEY = "orbit.thisDevice.queue";
+const WANTED_KEY = "orbit.thisDevice.wanted";
 
 const MAX_QUEUED = 200;
 
@@ -59,7 +60,21 @@ export const clearStoredDevice = () => {
   write(TOKEN_KEY, null);
   write(ID_KEY, null);
   write(QUEUE_KEY, null);
+  write(WANTED_KEY, null);
 };
+
+/**
+ * Whether the owner has tracking switched on for this browser.
+ *
+ * Remembered so the choice survives a reload. Starting every visit in the
+ * "off" state meant a computer silently stopped reporting the moment the tab
+ * was refreshed. This is only the owner's intent - the server still decides
+ * whether reporting is permitted, and the indicator still shows while it runs.
+ */
+export const getTrackingWanted = () => read(WANTED_KEY) === "true";
+
+export const setTrackingWanted = (wanted) =>
+  write(WANTED_KEY, wanted ? "true" : "false");
 
 // Stable per browser profile, and deliberately random rather than a
 // fingerprint: it identifies this registration, not this machine.

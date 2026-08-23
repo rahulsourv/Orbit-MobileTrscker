@@ -23,6 +23,7 @@ const PLAIN_KEYS = {
   queue: "orbit.queue",
   lastSync: "orbit.lastSync",
   reportInterval: "orbit.reportInterval",
+  trackingWanted: "orbit.trackingWanted",
 };
 
 // How often a tracking device reports, in seconds. Frequent enough to feel
@@ -83,6 +84,20 @@ export const setDeviceId = (value) => plainSet(PLAIN_KEYS.deviceId, value);
 
 export const getDeviceName = () => plainGet(PLAIN_KEYS.deviceName);
 export const setDeviceName = (value) => plainSet(PLAIN_KEYS.deviceName, value);
+
+/**
+ * Whether the owner has tracking switched on.
+ *
+ * Remembered so the choice survives a restart: having to re-enable tracking
+ * every launch means a device is silently not reporting exactly when you most
+ * need it to be. This is only the owner's *intent* - the server still decides
+ * whether reporting is permitted, and every indicator still shows while it runs.
+ */
+export const getTrackingWanted = async () =>
+  (await plainGet(PLAIN_KEYS.trackingWanted)) === "true";
+
+export const setTrackingWanted = (wanted) =>
+  plainSet(PLAIN_KEYS.trackingWanted, wanted ? "true" : "false");
 
 export const getReportInterval = async () => {
   const raw = await plainGet(PLAIN_KEYS.reportInterval);
@@ -158,5 +173,6 @@ export const clearAll = async () => {
     plainSet(PLAIN_KEYS.user, null),
     plainSet(PLAIN_KEYS.queue, null),
     plainSet(PLAIN_KEYS.lastSync, null),
+    plainSet(PLAIN_KEYS.trackingWanted, null),
   ]);
 };

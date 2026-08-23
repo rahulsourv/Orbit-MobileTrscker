@@ -183,6 +183,37 @@ export const OrbitProvider = ({ children }) => {
         await refreshLocalState();
         setBooting(false);
       }
+
+      /**
+       * Resume what the owner already switched on.
+       *
+       * Starting every launch in the "off" state meant a device silently
+       * stopped reporting after any restart - precisely when you would most
+       * want it reporting. This only honours a choice already made: it never
+       * turns tracking on by itself, and the server still has the final say.
+       */
+      if (!cancelled && deviceToken && deviceId) {
+        try {
+          const wanted = await storage.getTrackingWanted();
+
+          if (wanted && !(await tracker.isTracking())) {
+            const permissions = await tracker.getPermissionState();
+
+            // Never prompt on launch. If the grant was withdrawn, the owner
+            // reinstates it deliberately from the tracking screen.
+            if (permissions.foreground) {
+              await tracker.startTracking();
+
+              if (!cancelled) {
+                await refreshLocalState();
+              }
+            }
+          }
+        } catch {
+          // Tracking disabled server-side, or no permission. The screen
+          // reflects reality either way.
+        }
+      }
     })();
 
     return () => {
@@ -325,6 +356,10 @@ export const OrbitProvider = ({ children }) => {
     try {
       const started = await tracker.startTracking();
 
+      // Recorded before the first report, so a crash mid-start still leaves the
+      // owner's choice on disk to be resumed.
+      await storage.setTrackingWanted(true);
+
       if (started.mode === "foreground") {
         setBanner({
           tone: "warning",
@@ -352,6 +387,9 @@ export const OrbitProvider = ({ children }) => {
   }, [refreshLocalState]);
 
   const stop = useCallback(async () => {
+    // Turning it off is equally durable: it must not creep back on at the next
+    // launch just because it was on before.
+    await storage.setTrackingWanted(false);
     await tracker.stopTracking();
     setTracking(false);
     await refreshLocalState();

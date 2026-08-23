@@ -58,6 +58,17 @@ export const useThisDeviceStore = create((set, get) => ({
         supported,
         error: null,
       });
+
+      // Resume what the owner already switched on, rather than making them
+      // re-enable it after every reload. Never turns tracking on by itself.
+      if (
+        deviceClient.getTrackingWanted() &&
+        data.device.trackingEnabled &&
+        supported &&
+        !get().tracking
+      ) {
+        get().start();
+      }
     } catch (error) {
       // 401 means the token was rotated or the device deleted elsewhere.
       // Anything else is probably a network blip and must not unregister a
@@ -127,7 +138,7 @@ export const useThisDeviceStore = create((set, get) => ({
       // The server is the authority on whether tracking is permitted, so a
       // refusal stops the loop rather than retrying forever.
       if (result.status === "forbidden") {
-        get().stop();
+        get().stop({ remember: false });
         set({ trackingEnabled: false, error: result.message });
       }
 
@@ -185,7 +196,7 @@ export const useThisDeviceStore = create((set, get) => ({
       // Offline. Let it try - the report itself will report the real problem.
     }
 
-    get().stop();
+    get().stop({ remember: false });
 
     // Movement-driven, so a laptop carried to another room updates promptly.
     watchId = navigator.geolocation.watchPosition(
@@ -198,6 +209,7 @@ export const useThisDeviceStore = create((set, get) => ({
 
     reportTimer = setInterval(reportOnce, intervalSeconds * 1000);
 
+    deviceClient.setTrackingWanted(true);
     set({ tracking: true, error: null });
 
     await reportOnce();
@@ -205,7 +217,13 @@ export const useThisDeviceStore = create((set, get) => ({
     return true;
   },
 
-  stop: () => {
+  stop: ({ remember = true } = {}) => {
+    // A deliberate stop is durable; an internal restart (changing the interval)
+    // passes remember:false so it does not read as the owner switching off.
+    if (remember) {
+      deviceClient.setTrackingWanted(false);
+    }
+
     if (reportTimer) {
       clearInterval(reportTimer);
       reportTimer = null;
@@ -223,7 +241,7 @@ export const useThisDeviceStore = create((set, get) => ({
     set({ intervalSeconds: seconds });
 
     if (get().tracking) {
-      get().stop();
+      get().stop({ remember: false });
       get().start();
     }
   },

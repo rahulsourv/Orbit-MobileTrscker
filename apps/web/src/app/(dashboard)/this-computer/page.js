@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import {
   Laptop,
@@ -47,7 +47,6 @@ export default function ThisComputerPage() {
     error,
     intervalSeconds,
     supported,
-    bootstrap,
     register,
     start,
     stop,
@@ -62,10 +61,6 @@ export default function ThisComputerPage() {
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [forgetOpen, setForgetOpen] = useState(false);
-
-  useEffect(() => {
-    bootstrap();
-  }, [bootstrap]);
 
   const addThisComputer = async () => {
     setBusy(true);
@@ -86,18 +81,24 @@ export default function ThisComputerPage() {
   const toggle = async (next) => {
     setBusy(true);
 
-    if (next) {
-      const started = await start();
+    // Without the finally, anything thrown in start() leaves busy stuck true
+    // and the switch permanently disabled - unrecoverable without a reload.
+    try {
+      if (next) {
+        const started = await start();
 
-      if (started) {
-        toast.success("This computer is now sharing its location");
+        if (started) {
+          toast.success("This computer is now sharing its location");
+        }
+      } else {
+        stop();
+        toast.success("Stopped sharing this computer's location");
       }
-    } else {
-      stop();
-      toast.success("Stopped sharing this computer's location");
+    } catch (error) {
+      toast.error(error.message || "Could not change tracking");
+    } finally {
+      setBusy(false);
     }
-
-    setBusy(false);
   };
 
   return (

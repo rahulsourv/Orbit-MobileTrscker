@@ -10,6 +10,7 @@ import { useAuthStore } from "@/store/auth.store";
 import { useDeviceStore } from "@/store/device.store";
 import { useNotificationStore } from "@/store/notification.store";
 import { useConnectionStore } from "@/store/connection.store";
+import { useThisDeviceStore } from "@/store/thisDevice.store";
 
 /**
  * The signed-in shell.
@@ -28,12 +29,16 @@ const DashboardShell = ({ children }) => {
   );
 
   const fetchConnections = useConnectionStore((state) => state.fetchAll);
+  // Lives in the shell, not on the This Computer page: a computer the owner
+  // switched on should resume reporting wherever they happen to land.
+  const bootstrapThisDevice = useThisDeviceStore((state) => state.bootstrap);
 
   useEffect(() => {
     fetchDevices();
     fetchNotifications();
     fetchConnections();
-  }, [fetchDevices, fetchNotifications, fetchConnections]);
+    bootstrapThisDevice();
+  }, [fetchDevices, fetchNotifications, fetchConnections, bootstrapThisDevice]);
 
   return (
     <div className="min-h-dvh">
