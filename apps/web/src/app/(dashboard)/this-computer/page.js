@@ -24,6 +24,7 @@ import {
 } from "@/components/ui";
 import { ConfirmDialog } from "@/components/ui/Modal";
 import { useThisDeviceStore } from "@/store/thisDevice.store";
+import { isComputerLike } from "@/lib/deviceClient";
 import { useDeviceStore } from "@/store/device.store";
 import { relativeTime, formatAccuracy, formatCoordinatePair } from "@/lib/format";
 import { cn } from "@/lib/cn";
@@ -39,6 +40,7 @@ export default function ThisComputerPage() {
   const {
     status,
     registered,
+    deviceId,
     tracking,
     trackingEnabled,
     lastFix,
@@ -57,18 +59,28 @@ export default function ThisComputerPage() {
   } = useThisDeviceStore();
 
   const fetchDevices = useDeviceStore((state) => state.fetchDevices);
+  const devices = useDeviceStore((state) => state.devices);
+
+  // Computers already on the account, minus whichever one this browser is.
+  const reconnectable = devices.filter(
+    (device) => isComputerLike(device) && device.id !== deviceId
+  );
 
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [forgetOpen, setForgetOpen] = useState(false);
 
-  const addThisComputer = async () => {
+  const addThisComputer = async (options) => {
     setBusy(true);
 
     try {
-      const device = await register(name);
+      const { device, reclaimed } = await register(name, options);
 
-      toast.success(`${device.name} added to your account`);
+      toast.success(
+        reclaimed
+          ? `Reconnected ${device.name} — its history was kept`
+          : `${device.name} added to your account`
+      );
       fetchDevices();
       await start();
     } catch {
@@ -160,7 +172,7 @@ export default function ThisComputerPage() {
             </div>
 
             <Button
-              onClick={addThisComputer}
+              onClick={() => addThisComputer()}
               loading={busy}
               disabled={!supported}
               className="w-full"
@@ -168,6 +180,51 @@ export default function ThisComputerPage() {
               <Laptop className="size-4" /> Add this computer
             </Button>
           </div>
+
+          {/* A browser has no hardware identity, so clearing site data loses the
+              one it had. Rather than silently creating a duplicate, the machines
+              already on the account are offered back. */}
+          {reconnectable.length > 0 && (
+            <div className="border-t border-line p-5">
+              <p className="text-xs font-medium text-ink-muted">
+                Already added this computer before?
+              </p>
+              <p className="mt-1 text-[11px] leading-relaxed text-ink-faint">
+                Reconnect it instead of adding a second one. Its history and
+                everything shared about it are kept.
+              </p>
+
+              <div className="mt-3 space-y-2">
+                {reconnectable.map((device) => (
+                  <button
+                    key={device.id}
+                    onClick={() =>
+                      addThisComputer({ identifier: device.deviceIdentifier })
+                    }
+                    disabled={busy}
+                    className={cn(
+                      "focus-ring flex w-full items-center gap-3 rounded-xl border border-line",
+                      "bg-void/40 px-3 py-2.5 text-left transition-colors",
+                      "hover:border-line-strong disabled:opacity-50"
+                    )}
+                  >
+                    <Laptop className="size-4 shrink-0 text-ink-faint" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-xs font-medium text-ink">
+                        {device.name}
+                      </span>
+                      <span className="block text-[11px] text-ink-faint">
+                        Last seen {relativeTime(device.lastSeen)}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-[11px] text-accent">
+                      Reconnect
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </Card>
       ) : (
         <div className="space-y-4">

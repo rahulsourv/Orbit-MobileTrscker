@@ -130,19 +130,40 @@ const suggestName = () => {
 
 export const defaultDeviceName = suggestName;
 
-export const registerThisBrowser = async (name) => {
+/**
+ * Registers this browser, or reconnects a computer already on the account.
+ *
+ * A browser has no hardware identity to fall back on - that is deliberate on
+ * the web's part - so the identifier lives in localStorage and dies with it.
+ * Passing an existing device's identifier is how a computer whose site data was
+ * cleared gets its own record back instead of becoming a duplicate.
+ */
+export const registerThisBrowser = async (name, { identifier } = {}) => {
+  const deviceIdentifier = identifier || getOrCreateIdentifier();
+
   const data = await api.post("/devices", {
     name: name?.trim() || suggestName(),
     type: detectType(),
     platform: detectPlatform(),
-    deviceIdentifier: getOrCreateIdentifier(),
+    deviceIdentifier,
+    // Always opt in: if this identifier is already on the account it is this
+    // same browser returning, not a second machine.
+    reclaim: true,
   });
 
   write(TOKEN_KEY, data.deviceToken);
   write(ID_KEY, data.device.id);
+  // Adopt whatever identifier we ended up with, so the next reload matches.
+  write(IDENTIFIER_KEY, deviceIdentifier);
 
-  return data.device;
+  return { device: data.device, reclaimed: Boolean(data.reclaimed) };
 };
+
+// Devices on the account that could plausibly be a browser on some computer,
+// offered as reconnect candidates when this one has no token.
+export const isComputerLike = (device) =>
+  ["laptop", "desktop", "other"].includes(device.type) ||
+  ["windows", "macos", "linux", "web"].includes(device.platform);
 
 /* ------------------------------------------------------------- reporting -- */
 

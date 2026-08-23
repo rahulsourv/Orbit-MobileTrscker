@@ -88,11 +88,14 @@ export const useThisDeviceStore = create((set, get) => ({
     }
   },
 
-  register: async (name) => {
+  register: async (name, options) => {
     set({ error: null });
 
     try {
-      const device = await deviceClient.registerThisBrowser(name);
+      const { device, reclaimed } = await deviceClient.registerThisBrowser(
+        name,
+        options
+      );
 
       set({
         status: "registered",
@@ -101,14 +104,9 @@ export const useThisDeviceStore = create((set, get) => ({
         trackingEnabled: device.trackingEnabled,
       });
 
-      return device;
+      return { device, reclaimed };
     } catch (error) {
-      set({
-        error:
-          error.status === 409
-            ? "This browser is already registered. Delete it from Devices first."
-            : error.message,
-      });
+      set({ error: error.message });
 
       throw error;
     }
