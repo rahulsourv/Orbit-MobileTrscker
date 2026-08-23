@@ -1,6 +1,7 @@
 import * as Location from "expo-location";
 import * as TaskManager from "expo-task-manager";
 import * as Battery from "expo-battery";
+import * as Notifications from "expo-notifications";
 
 import * as storage from "../lib/storage";
 import * as api from "../lib/api";
@@ -143,6 +144,27 @@ export const sendHeartbeat = async () => {
 
 /* ----------------------------------------------------------- permissions -- */
 
+/**
+ * Android 13+ hides the foreground-service notification unless notifications
+ * are permitted - and that notification is the whole reason Orbit cannot track
+ * quietly. Being refused is not fatal, so it is asked for but never blocks.
+ */
+const requestNotificationPermission = async () => {
+  try {
+    const existing = await Notifications.getPermissionsAsync();
+
+    if (existing.granted) {
+      return true;
+    }
+
+    const asked = await Notifications.requestPermissionsAsync();
+
+    return asked.granted;
+  } catch {
+    return false;
+  }
+};
+
 export const requestPermissions = async ({ background = true } = {}) => {
   const foreground = await Location.requestForegroundPermissionsAsync();
 
@@ -150,14 +172,19 @@ export const requestPermissions = async ({ background = true } = {}) => {
     return {
       granted: false,
       background: false,
+      notifications: false,
       message:
         "Orbit needs location access to report where this device is. You can grant it in Settings.",
     };
   }
 
   if (!background) {
-    return { granted: true, background: false };
+    return { granted: true, background: false, notifications: false };
   }
+
+  // Asked before the background grant: the notification is what makes
+  // background tracking visible, so it should exist by the time it starts.
+  const notifications = await requestNotificationPermission();
 
   // Both platforms require the foreground grant first, and Android 11+ sends
   // the user to Settings rather than showing a second dialog. Being refused
@@ -167,10 +194,13 @@ export const requestPermissions = async ({ background = true } = {}) => {
   return {
     granted: true,
     background: always.status === "granted",
+    notifications,
     message:
-      always.status === "granted"
-        ? undefined
-        : "Background location was not granted, so Orbit can only report while the app is open.",
+      always.status !== "granted"
+        ? "Background location was not granted, so Orbit can only report while the app is open."
+        : notifications
+          ? undefined
+          : "Notifications are blocked, so Android will hide the badge that shows tracking is running. Orbit will still report.",
   };
 };
 

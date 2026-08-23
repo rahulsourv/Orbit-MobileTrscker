@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
+import { Button } from "../components/ui";
 import { useDashboard } from "../context/DashboardContext";
 import { colors, radius, spacing } from "../theme";
 import { relativeTime } from "../lib/time";
@@ -17,6 +18,9 @@ import { notificationMeta } from "../lib/deviceMeta";
 
 export const AlertsScreen = () => {
   const {
+    incoming,
+    acceptConnection,
+    denyConnection,
     notifications,
     unreadCount,
     loading,
@@ -27,6 +31,32 @@ export const AlertsScreen = () => {
   } = useDashboard();
 
   const [refreshing, setRefreshing] = useState(false);
+  const [answering, setAnswering] = useState(null);
+
+  // Requests about *your* location need a decision, so they belong wherever you
+  // go to see what needs your attention - here, not buried a tab away.
+  const pending = incoming.filter((entry) => entry.status === "pending");
+
+  const answer = async (request, accept) => {
+    setAnswering(request.id);
+
+    try {
+      if (accept) {
+        // An empty list means every device, the sensible default when
+        // answering from a notification. The scope can be narrowed later on
+        // the People tab.
+        await acceptConnection(request.id, []);
+        Alert.alert("Sharing started", "You can stop at any time.");
+      } else {
+        await denyConnection(request.id);
+        Alert.alert("Declined", "Nothing was shared.");
+      }
+    } catch (error) {
+      Alert.alert("Could not respond", error.message);
+    } finally {
+      setAnswering(null);
+    }
+  };
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -76,6 +106,49 @@ export const AlertsScreen = () => {
             onRefresh={onRefresh}
             tintColor={colors.accent}
           />
+        }
+        ListHeaderComponent={
+          pending.length > 0 ? (
+            <View style={styles.pendingCard}>
+              <Text style={styles.pendingTitle}>
+                {pending.length} person{pending.length === 1 ? "" : "s"} asking to
+                see your location
+              </Text>
+              <Text style={styles.pendingBody}>
+                Nothing is shared unless you accept.
+              </Text>
+
+              {pending.map((request) => (
+                <View key={request.id} style={styles.pendingRow}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={styles.pendingName}>{request.requesterName}</Text>
+                    <Text style={styles.pendingEmail} numberOfLines={1}>
+                      {request.requesterEmail}
+                    </Text>
+                    {request.message ? (
+                      <Text style={styles.pendingQuote}>“{request.message}”</Text>
+                    ) : null}
+                  </View>
+
+                  <View style={styles.pendingActions}>
+                    <Button
+                      label="Accept"
+                      onPress={() => answer(request, true)}
+                      loading={answering === request.id}
+                      style={styles.pendingButton}
+                    />
+                    <Button
+                      label="Deny"
+                      variant="ghost"
+                      onPress={() => answer(request, false)}
+                      disabled={answering === request.id}
+                      style={styles.pendingButton}
+                    />
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : null
         }
         ListEmptyComponent={
           <View style={styles.empty}>
@@ -138,6 +211,32 @@ const styles = StyleSheet.create({
   barActions: { flexDirection: "row", gap: spacing(4), marginLeft: "auto" },
   barAction: { fontSize: 13, color: colors.accent, fontWeight: "600" },
   list: { padding: spacing(4), paddingTop: 0, gap: spacing(2.5) },
+  pendingCard: {
+    backgroundColor: colors.raised,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: `${colors.accent}44`,
+    padding: spacing(4),
+    marginBottom: spacing(3),
+  },
+  pendingTitle: { fontSize: 14, fontWeight: "600", color: colors.ink },
+  pendingBody: { fontSize: 12, color: colors.inkMuted, marginTop: spacing(1) },
+  pendingRow: {
+    marginTop: spacing(4),
+    paddingTop: spacing(3),
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
+  },
+  pendingName: { fontSize: 14, fontWeight: "600", color: colors.ink },
+  pendingEmail: { fontSize: 12, color: colors.inkFaint, marginTop: 2 },
+  pendingQuote: {
+    fontSize: 12,
+    fontStyle: "italic",
+    color: colors.inkMuted,
+    marginTop: spacing(2),
+  },
+  pendingActions: { flexDirection: "row", gap: spacing(2), marginTop: spacing(3) },
+  pendingButton: { flex: 1, minHeight: 40 },
   card: {
     flexDirection: "row",
     gap: spacing(3),

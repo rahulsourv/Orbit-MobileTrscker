@@ -2,11 +2,12 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Bell, Check, Trash2, X } from "lucide-react";
+import { Bell, Check, Trash2, X, UserPlus } from "lucide-react";
 
 import {
   Button,
   Card,
+  CardHeader,
   EmptyState,
   PageHeader,
   Skeleton,
@@ -15,6 +16,9 @@ import {
 import { ConfirmDialog } from "@/components/ui/Modal";
 import { useNotificationStore } from "@/store/notification.store";
 import { useDeviceStore } from "@/store/device.store";
+import { useConnectionStore } from "@/store/connection.store";
+import * as connectionService from "@/services/connection.service";
+import { toast } from "sonner";
 import { notificationMeta, TONE_CLASS, NOTIFICATION_META } from "@/lib/constants";
 import { relativeTime, absoluteTime, dayLabel } from "@/lib/format";
 import { cn } from "@/lib/cn";
@@ -37,8 +41,16 @@ export default function AlertsPage() {
   const remove = useNotificationStore((state) => state.remove);
   const clearAll = useNotificationStore((state) => state.clearAll);
   const devices = useDeviceStore((state) => state.devices);
+  const incoming = useConnectionStore((state) => state.incoming);
+  const refreshConnections = useConnectionStore((state) => state.fetchAll);
+
+  // Requests someone has sent about *your* location need a decision, so they
+  // belong wherever you go to see what needs your attention - which is here,
+  // not buried a tab away.
+  const pending = incoming.filter((entry) => entry.status === "pending");
 
   const [filter, setFilter] = useState("all");
+  const [answering, setAnswering] = useState(null);
   const [clearOpen, setClearOpen] = useState(false);
 
   const visible = useMemo(() => {
@@ -96,6 +108,82 @@ export default function AlertsPage() {
           </div>
         }
       />
+
+      {pending.length > 0 && (
+        <Card className="mb-4 border-accent/30">
+          <CardHeader
+            title={`${pending.length} person${pending.length === 1 ? "" : "s"} asking to see your location`}
+            subtitle="Nothing is shared unless you accept."
+          />
+          <div className="border-t border-line">
+            {pending.map((request) => (
+              <div
+                key={request.id}
+                className="flex flex-wrap items-center gap-3 border-b border-line/60 px-5 py-4 last:border-0"
+              >
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent/10 text-accent ring-1 ring-inset ring-accent/20">
+                  <UserPlus className="size-4" />
+                </span>
+
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-ink">
+                    {request.requesterName}
+                  </p>
+                  <p className="truncate text-xs text-ink-muted">
+                    {request.requesterEmail}
+                  </p>
+                  {request.message && (
+                    <p className="mt-1 text-xs italic text-ink-faint">
+                      “{request.message}”
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    loading={answering === request.id}
+                    onClick={async () => {
+                      setAnswering(request.id);
+
+                      try {
+                        // An empty list means every device, which is the sensible
+                        // default when answering from a notification. The scope
+                        // can be narrowed afterwards on the People page.
+                        await connectionService.acceptRequest(request.id, []);
+                        toast.success("Sharing started. You can stop any time.");
+                        refreshConnections();
+                      } catch (error) {
+                        toast.error(error.message);
+                      } finally {
+                        setAnswering(null);
+                      }
+                    }}
+                  >
+                    <Check className="size-3.5" /> Accept
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={answering === request.id}
+                    onClick={async () => {
+                      try {
+                        await connectionService.denyRequest(request.id);
+                        toast.success("Declined. Nothing was shared.");
+                        refreshConnections();
+                      } catch (error) {
+                        toast.error(error.message);
+                      }
+                    }}
+                  >
+                    <X className="size-3.5" /> Deny
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <div className="mb-4 flex flex-wrap gap-1 rounded-lg border border-line bg-void/40 p-1">
         {FILTERS.map((option) => (

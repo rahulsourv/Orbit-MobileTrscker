@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
+import { HomeScreen } from "../screens/HomeScreen";
 import { MapScreen } from "../screens/MapScreen";
 import { DevicesScreen } from "../screens/DevicesScreen";
 import { DeviceDetailScreen } from "../screens/DeviceDetailScreen";
@@ -76,11 +77,12 @@ export const ThisDeviceNavigator = () => (
 );
 
 const ICONS = {
+  Home: ["home", "home-outline"],
   Map: ["map", "map-outline"],
   Devices: ["phone-portrait", "phone-portrait-outline"],
   People: ["people", "people-outline"],
   Alerts: ["notifications", "notifications-outline"],
-  "This device": ["radio", "radio-outline"],
+  Device: ["radio", "radio-outline"],
 };
 
 export const RootNavigator = () => {
@@ -116,6 +118,9 @@ export const RootNavigator = () => {
           },
         })}
       >
+        {/* Home first: the dashboard is what you want on opening the app, not
+            a full-screen map with no context around it. */}
+        <Tab.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
         <Tab.Screen name="Map" component={MapScreen} options={{ headerShown: false }} />
         <Tab.Screen
           name="Devices"
@@ -142,7 +147,7 @@ export const RootNavigator = () => {
           }}
         />
         <Tab.Screen
-          name="This device"
+          name="Device"
           component={ThisDeviceNavigator}
           options={{ headerShown: false }}
         />
