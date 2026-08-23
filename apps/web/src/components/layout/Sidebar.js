@@ -9,6 +9,7 @@ import {
   History,
   Hexagon,
   Users,
+  MonitorSmartphone,
   Bell,
   Settings,
   X,
@@ -21,6 +22,7 @@ import { useConnectionStore } from "@/store/connection.store";
 const NAV = [
   { href: "/dashboard", label: "Overview", icon: LayoutGrid },
   { href: "/devices", label: "Devices", icon: Smartphone },
+  { href: "/this-computer", label: "This Computer", icon: MonitorSmartphone },
   { href: "/live", label: "Live Map", icon: Radar },
   { href: "/history", label: "Location History", icon: History },
   { href: "/geofences", label: "Geofences", icon: Hexagon },
