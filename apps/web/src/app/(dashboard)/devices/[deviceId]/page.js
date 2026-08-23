@@ -13,6 +13,7 @@ import {
   Mountain,
   Crosshair,
   Clock,
+  RefreshCw,
   History as HistoryIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -79,6 +80,10 @@ export default function DeviceDetailPage() {
   const [rotatedToken, setRotatedToken] = useState(null);
   const [working, setWorking] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  // Bumping this re-runs the load effect, so the button and the initial fetch
+  // share one code path rather than drifting apart.
+  const [reloadToken, setReloadToken] = useState(0);
 
   // The store may not hold this device on a hard load straight to the URL.
   useEffect(() => {
@@ -132,7 +137,29 @@ export default function DeviceDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [deviceId]);
+  }, [deviceId, reloadToken]);
+
+  /**
+   * Pull this device's newest position and path.
+   *
+   * Also re-reads the device itself, because the parts most worth refreshing -
+   * online state, battery, last seen - live on the device record rather than on
+   * the location.
+   */
+  const refreshDevice = async () => {
+    setRefreshing(true);
+
+    try {
+      const data = await deviceService.getDevice(deviceId);
+
+      upsertDevice(data.device);
+      setReloadToken((value) => value + 1);
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const toggleTracking = async (enabled) => {
     patchDevice(deviceId, { trackingEnabled: enabled });
@@ -244,6 +271,16 @@ export default function DeviceDetailPage() {
         </div>
 
         <div className="flex flex-wrap gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={refreshDevice}
+            loading={refreshing}
+            title="Fetch this device's latest position"
+          >
+            {!refreshing && <RefreshCw className="size-3.5" />}
+            Refresh
+          </Button>
           <Button variant="secondary" size="sm" onClick={() => setShareOpen(true)}>
             <Share2 className="size-3.5" /> Share
           </Button>

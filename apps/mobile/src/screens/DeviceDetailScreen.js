@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
+  Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Switch,
@@ -27,7 +30,7 @@ const RANGES = [
 
 export const DeviceDetailScreen = ({ route, navigation }) => {
   const { deviceId } = route.params;
-  const { devices, setDeviceTracking, removeDevice } = useDashboard();
+  const { devices, setDeviceTracking, removeDevice, refresh } = useDashboard();
   const { device: thisDevice } = useOrbit();
 
   const device = devices.find((entry) => entry.id === deviceId);
@@ -36,6 +39,10 @@ export const DeviceDetailScreen = ({ route, navigation }) => {
   const [hours, setHours] = useState(24);
   const [loadingTrail, setLoadingTrail] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  // Bumping this re-runs the load effect, so the pull gesture and the initial
+  // fetch share one code path rather than drifting apart.
+  const [reloadToken, setReloadToken] = useState(0);
 
   useEffect(() => {
     navigation.setOptions({ title: device?.name || "Device" });
@@ -69,7 +76,25 @@ export const DeviceDetailScreen = ({ route, navigation }) => {
     return () => {
       cancelled = true;
     };
-  }, [deviceId, hours]);
+  }, [deviceId, hours, reloadToken]);
+
+  /**
+   * Pull this device's newest position and path.
+   *
+   * Also refreshes the device list, because the parts most worth seeing again -
+   * online state, battery, last seen - live on the device record rather than on
+   * the location.
+   */
+  const refreshDevice = async () => {
+    setRefreshing(true);
+
+    try {
+      await refresh();
+      setReloadToken((value) => value + 1);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   if (!device) {
     return (
@@ -134,7 +159,29 @@ export const DeviceDetailScreen = ({ route, navigation }) => {
     <ScrollView
       style={{ backgroundColor: colors.void }}
       contentContainerStyle={styles.container}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={refreshDevice}
+          tintColor={colors.accent}
+        />
+      }
     >
+      <Pressable
+        onPress={refreshDevice}
+        disabled={refreshing}
+        style={styles.refreshButton}
+      >
+        {refreshing ? (
+          <ActivityIndicator size="small" color={colors.accent} />
+        ) : (
+          <Ionicons name="refresh" size={15} color={colors.accent} />
+        )}
+        <Text style={styles.refreshText}>
+          {refreshing ? "Refreshing" : "Refresh location"}
+        </Text>
+      </Pressable>
+
       <View style={styles.mapWrap}>
         {device.lastLocation ? (
           <OrbitMap
@@ -250,6 +297,19 @@ export const DeviceDetailScreen = ({ route, navigation }) => {
 
 const styles = StyleSheet.create({
   container: { padding: spacing(4), paddingBottom: spacing(10) },
+  refreshButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing(2),
+    minHeight: 40,
+    marginBottom: spacing(3),
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: `${colors.accent}44`,
+    backgroundColor: `${colors.accent}12`,
+  },
+  refreshText: { fontSize: 13, fontWeight: "600", color: colors.accent },
   mapWrap: {
     height: 260,
     borderRadius: radius.lg,
