@@ -166,7 +166,10 @@ export const DashboardProvider = ({ children }) => {
       // A function, so a reconnect after the access token rotated picks up the
       // current one instead of replaying a stale token.
       auth: (callback) => callback({ token: api.getAccessToken() }),
-      transports: ["websocket"],
+      // Transports are deliberately left at the default (polling, then an
+      // upgrade to websocket). Pinning this to websocket-only fails most of the
+      // time behind Render's proxy, and socket.io only attempts the first
+      // transport in an explicit list, so naming both is not a fallback.
     });
 
     socketRef.current = socket;

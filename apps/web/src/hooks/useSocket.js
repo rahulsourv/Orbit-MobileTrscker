@@ -34,7 +34,10 @@ export const useSocket = () => {
       // A function, not a value: on reconnect the token is read again, so a
       // socket that drops after the access token rotated still comes back.
       auth: (callback) => callback({ token: getAccessToken() }),
-      transports: ["websocket"],
+      // Transports are deliberately left at the default (polling, then an
+      // upgrade to websocket). Pinning this to websocket-only fails most of the
+      // time behind Render's proxy, and socket.io only attempts the first
+      // transport in an explicit list, so naming both is not a fallback.
       withCredentials: true,
     });
 
