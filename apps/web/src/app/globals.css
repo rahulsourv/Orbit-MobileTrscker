@@ -1,0 +1,287 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+ * Orbit design tokens.
+ *
+ * The product is deliberately dark-only. A single committed look keeps the map
+ * - which is the visual focal point - consistent with the chrome around it,
+ * instead of asking every surface to work in two palettes.
+ * ------------------------------------------------------------------------ */
+@theme {
+  /* Depth: near-black with a blue cast, so the cyan accent reads as light
+     rather than as a sticker on top of grey. */
+  --color-void: #06070a;
+  --color-base: #0a0c11;
+  --color-raised: #10131a;
+  --color-overlay: #151922;
+
+  --color-line: #1e232e;
+  --color-line-strong: #2a3140;
+
+  --color-ink: #f2f5f9;
+  --color-ink-muted: #97a1b3;
+  --color-ink-faint: #5d6779;
+
+  --color-accent: #22d3ee;
+  --color-accent-soft: #0e7490;
+  --color-accent-glow: #67e8f9;
+
+  --color-positive: #34d399;
+  --color-warning: #fbbf24;
+  --color-danger: #fb7185;
+  --color-violet: #a78bfa;
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --radius-card: 1rem;
+
+  --animate-pulse-ring: pulse-ring 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-rise: rise 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-fade: fade 0.35s ease both;
+  --animate-sweep: sweep 2.6s linear infinite;
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.7;
+  }
+  70% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes sweep {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-void);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* A single soft light source behind the whole app. Without it the flat
+   near-black reads as cheap rather than deep. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(
+      60rem 40rem at 15% -10%,
+      color-mix(in oklab, var(--color-accent) 9%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      50rem 35rem at 95% 5%,
+      color-mix(in oklab, var(--color-violet) 7%, transparent),
+      transparent 70%
+    );
+}
+
+::selection {
+  background: color-mix(in oklab, var(--color-accent) 35%, transparent);
+  color: var(--color-ink);
+}
+
+/* Scrollbars, because a default light scrollbar undoes the whole illusion. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line-strong) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--color-line-strong);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: #3a4356;
+}
+
+@layer components {
+  /* The glass card the whole dashboard is built from. */
+  .glass {
+    background: linear-gradient(
+      160deg,
+      color-mix(in oklab, var(--color-raised) 88%, transparent),
+      color-mix(in oklab, var(--color-base) 92%, transparent)
+    );
+    border: 1px solid var(--color-line);
+    backdrop-filter: blur(14px);
+  }
+
+  .glass-hover {
+    transition:
+      border-color 0.25s ease,
+      transform 0.25s ease,
+      box-shadow 0.25s ease;
+  }
+
+  .glass-hover:hover {
+    border-color: var(--color-line-strong);
+    transform: translateY(-2px);
+    box-shadow: 0 18px 40px -24px rgb(0 0 0 / 0.9);
+  }
+
+  .focus-ring {
+    outline: none;
+  }
+
+  .focus-ring:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  /* Hairline that fades at both ends - used under section headers. */
+  .rule {
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--color-line-strong),
+      transparent
+    );
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Leaflet overrides. The default control chrome is white and would sit on the
+ * dark map like a bandage.
+ * ------------------------------------------------------------------------ */
+.leaflet-container {
+  background: #05070d;
+  font-family: var(--font-sans);
+  outline: none;
+}
+
+.leaflet-control-zoom {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.leaflet-control-zoom a {
+  background: color-mix(in oklab, var(--color-overlay) 92%, transparent) !important;
+  color: var(--color-ink-muted) !important;
+  border: 1px solid var(--color-line) !important;
+  backdrop-filter: blur(12px);
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.leaflet-control-zoom a:first-child {
+  border-radius: 0.6rem 0.6rem 0 0 !important;
+}
+
+.leaflet-control-zoom a:last-child {
+  border-radius: 0 0 0.6rem 0.6rem !important;
+  border-top: none !important;
+}
+
+.leaflet-control-zoom a:hover {
+  color: var(--color-accent) !important;
+  border-color: var(--color-line-strong) !important;
+}
+
+.leaflet-control-attribution {
+  background: rgb(6 7 10 / 0.75) !important;
+  color: var(--color-ink-faint) !important;
+  font-size: 10px !important;
+  backdrop-filter: blur(8px);
+}
+
+.leaflet-control-attribution a {
+  color: var(--color-ink-muted) !important;
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--color-overlay) !important;
+  color: var(--color-ink) !important;
+  border: 1px solid var(--color-line-strong);
+  box-shadow: 0 20px 50px -20px rgb(0 0 0 / 0.95) !important;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 0.85rem !important;
+}
+
+.leaflet-popup-content {
+  margin: 0.75rem 0.9rem !important;
+  font-size: 0.8125rem;
+}
+
+.leaflet-popup-close-button {
+  color: var(--color-ink-faint) !important;
+  padding: 0.5rem 0.5rem 0 0 !important;
+}
+
+/* The live device marker: a solid core with a ring that breathes outward. */
+.orbit-marker {
+  position: relative;
+  width: 18px;
+  height: 18px;
+}
+
+.orbit-marker__core {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  border: 2px solid rgb(6 7 10 / 0.9);
+  box-shadow: 0 0 0 1px currentColor, 0 0 18px 2px currentColor;
+  background: currentColor;
+}
+
+.orbit-marker__ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.55;
+  animation: var(--animate-pulse-ring);
+}

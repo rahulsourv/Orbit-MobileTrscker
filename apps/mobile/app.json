@@ -1,0 +1,67 @@
+{
+  "expo": {
+    "name": "Orbit",
+    "slug": "orbit",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "orbit",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#06070a",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.orbit.tracker",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Orbit shows this device's position on your own Orbit dashboard. Tracking only runs while you have it switched on.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Orbit reports this device's position to your own account, including in the background, so you can find it if it is lost. You can switch tracking off at any time.",
+        "UIBackgroundModes": [
+          "location",
+          "fetch"
+        ]
+      }
+    },
+    "android": {
+      "package": "com.orbit.tracker",
+      "adaptiveIcon": {
+        "backgroundColor": "#06070a",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#06070a"
+        }
+      ],
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Orbit reports this device's position to your own account. You can switch tracking off at any time.",
+          "locationWhenInUsePermission": "Orbit shows this device's position on your own Orbit dashboard.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ],
+      "expo-font"
+    ],
+    "extra": {
+      "orbitApiUrl": "http://localhost:5000/api"
+    }
+  }
+}

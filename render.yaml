@@ -1,0 +1,30 @@
+# Optional blueprint for Render. Configuring the service by hand in the
+# dashboard works identically - this just records the settings so they are not
+# guesswork next time.
+services:
+  - type: web
+    name: orbit-api
+    runtime: node
+    plan: free
+    # The repo holds three apps; only this subdirectory is the API.
+    rootDir: server
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Render provides PORT; the app already reads it.
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      # Comma-separated origins allowed to call the API with credentials.
+      - key: CORS_ORIGIN
+        sync: false
+      # Optional. Without it rate limiting is per-instance and Socket.IO runs
+      # unclustered - fine on a single free instance.
+      # - key: REDIS_URL
+      #   sync: false

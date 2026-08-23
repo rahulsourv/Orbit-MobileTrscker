@@ -1,0 +1,7 @@
+# Normalise line endings in the repository regardless of who commits.
+# Without this, files authored on Windows land in the repo with CRLF and can
+# break shell scripts when Render clones them on Linux.
+* text=auto eol=lf
+
+# Lockfiles are generated; collapsing them keeps diffs readable.
+package-lock.json linguist-generated=true -diff
