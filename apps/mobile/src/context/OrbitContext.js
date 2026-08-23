@@ -319,6 +319,9 @@ export const OrbitProvider = ({ children }) => {
         platform: detectPlatform(),
         model: Device.modelName || undefined,
         deviceIdentifier,
+        // The identifier is hardware-backed, so a match means this same phone
+        // coming back after a reinstall - reconnect it rather than refusing.
+        reclaim: true,
       });
 
       // The raw token exists only in this response.

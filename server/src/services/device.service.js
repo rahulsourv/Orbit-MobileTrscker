@@ -49,6 +49,42 @@ const registerDevice = async (userId, payload) => {
     deviceIdentifier: payload.deviceIdentifier,
   });
 
+  /**
+   * The same physical device coming back.
+   *
+   * Reinstalling the app loses its token but not its identity, and the honest
+   * answer is that this is the device we already know - not a second one. So
+   * the existing record is reclaimed with a fresh token, keeping its history,
+   * its geofence membership and everything shared about it.
+   *
+   * Safe because the caller is already authenticated as the owner: this only
+   * ever lets someone re-take a device that is theirs. The old token dies, as
+   * it must - if a stranger somehow held it, this is what removes them.
+   */
+  if (existing && payload.reclaim) {
+    const reissued = issueDeviceToken();
+
+    existing.deviceTokenHash = reissued.deviceTokenHash;
+    existing.tokenIssuedAt = new Date();
+
+    if (payload.name) existing.name = payload.name;
+    if (payload.type) existing.type = payload.type;
+    if (payload.platform) existing.platform = payload.platform;
+    if (payload.model !== undefined) existing.model = payload.model ?? null;
+
+    await existing.save();
+
+    const publicDevice = existing.toPublic();
+
+    emitToUser(userId, "device:updated", publicDevice);
+
+    return {
+      device: publicDevice,
+      deviceToken: reissued.deviceToken,
+      reclaimed: true,
+    };
+  }
+
   if (existing) {
     throw new AppError("This device is already registered", 409);
   }
@@ -71,7 +107,7 @@ const registerDevice = async (userId, payload) => {
 
     // The raw token is returned exactly once. It is never stored in a
     // retrievable form, so losing it means rotating rather than re-reading.
-    return { device: device.toPublic(), deviceToken };
+    return { device: device.toPublic(), deviceToken, reclaimed: false };
   } catch (error) {
     if (error.code === 11000) {
       throw new AppError("This device is already registered", 409);

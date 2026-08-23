@@ -4,15 +4,17 @@ const deviceService = require("../services/device.service");
 // from a verified token - never from anything the client sent.
 const registerDevice = async (req, res, next) => {
   try {
-    const { device, deviceToken } = await deviceService.registerDevice(
+    const { device, deviceToken, reclaimed } = await deviceService.registerDevice(
       req.user.id,
       req.body
     );
 
-    return res.status(201).json({
+    return res.status(reclaimed ? 200 : 201).json({
       success: true,
-      message: "Device registered. Store the device token securely - it is shown only once.",
-      data: { device, deviceToken },
+      message: reclaimed
+        ? "Welcome back - this device was reconnected and its history kept. The new token is shown only once."
+        : "Device registered. Store the device token securely - it is shown only once.",
+      data: { device, deviceToken, reclaimed },
     });
   } catch (error) {
     return next(error);

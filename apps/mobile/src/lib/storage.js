@@ -1,6 +1,7 @@
 import * as SecureStore from "expo-secure-store";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Crypto from "expo-crypto";
+import { Platform } from "react-native";
 
 /**
  * Two tiers of storage, chosen by sensitivity.
@@ -126,21 +127,48 @@ export const setUser = (user) =>
   plainSet(PLAIN_KEYS.user, user ? JSON.stringify(user) : null);
 
 /**
- * A stable identifier for this installation.
+ * A stable identifier for this physical device.
  *
- * Deliberately random rather than derived from hardware ids: those are not
- * reliably unique, are restricted on modern Android and iOS, and using them
- * would make the identifier a fingerprint of the phone rather than of this
- * app's registration.
+ * IMEI is not an option: Android 10+ restricts it to system and carrier apps,
+ * and iOS has never exposed it or any hardware serial. What each platform does
+ * offer is the closest legitimate equivalent:
+ *
+ *   Android  Settings.Secure.ANDROID_ID - unique per device, user and signing
+ *            key, and crucially it survives reinstalling the app. It changes
+ *            only on a factory reset or a change of signing key.
+ *   iOS      identifierForVendor - stable while any app from this vendor is
+ *            installed, and regenerated once they are all removed.
+ *
+ * Both are what Apple and Google actually intend apps to use, and both mean a
+ * reinstall reconnects the existing device instead of creating a duplicate.
+ *
+ * The random fallback remains for anything that offers neither, and is cached
+ * so it stays put for as long as storage does.
  */
 export const getOrCreateDeviceIdentifier = async () => {
-  const existing = await plainGet(PLAIN_KEYS.deviceIdentifier);
+  const cached = await plainGet(PLAIN_KEYS.deviceIdentifier);
 
-  if (existing) {
-    return existing;
+  if (cached) {
+    return cached;
   }
 
-  const identifier = `orbit-${Crypto.randomUUID().replace(/-/g, "").slice(0, 20)}`;
+  let hardware = null;
+
+  try {
+    const Application = require("expo-application");
+
+    if (Platform.OS === "android") {
+      hardware = Application.getAndroidId();
+    } else if (Platform.OS === "ios") {
+      hardware = await Application.getIosIdForVendorAsync();
+    }
+  } catch {
+    // Not available in this runtime - fall through to the random identifier.
+  }
+
+  const identifier = hardware
+    ? `orbit-${hardware.replace(/[^a-zA-Z0-9]/g, "").slice(0, 32)}`
+    : `orbit-${Crypto.randomUUID().replace(/-/g, "").slice(0, 20)}`;
 
   await plainSet(PLAIN_KEYS.deviceIdentifier, identifier);
 
@@ -175,4 +203,8 @@ export const clearAll = async () => {
     plainSet(PLAIN_KEYS.lastSync, null),
     plainSet(PLAIN_KEYS.trackingWanted, null),
   ]);
+
+  // The identifier itself is deliberately kept. On a hardware-backed platform
+  // it would be re-derived identically anyway, and keeping it means unlinking
+  // and re-adding reconnects the same device rather than orphaning its history.
 };

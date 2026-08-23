@@ -31,6 +31,10 @@ const registerDeviceSchema = z.object({
     .min(8, "Device identifier must be at least 8 characters")
     .max(128),
   trackingEnabled: z.boolean().optional(),
+  // Set by a client that knows this is the same physical device coming back -
+  // a reinstall, say - rather than a new one. Opt-in, so an accidental
+  // duplicate still fails loudly with a 409.
+  reclaim: z.boolean().optional(),
 });
 
 const updateDeviceSchema = z

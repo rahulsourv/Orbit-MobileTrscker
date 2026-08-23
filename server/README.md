@@ -83,7 +83,7 @@ All responses share one envelope: `{ success, message?, data?, errors? }`.
 
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
-| POST | `/` | user | Register a device, returns the device token **once** |
+| POST | `/` | user | Register a device, returns the device token **once**; with `reclaim: true` an existing identifier reconnects that device instead of failing |
 | GET | `/` | user | All devices plus online/offline counts |
 | GET | `/:deviceId` | user | One device |
 | PATCH | `/:deviceId` | user | Rename, retype |
@@ -208,6 +208,14 @@ are states the query filters on rather than conditions sprinkled through the
 code. Live updates fan out to accepted watchers through one helper, and the
 watcher list is cached for 30 seconds but dropped the instant a connection
 changes — so revoking is immediate rather than eventually.
+
+**One physical device is one record.** Clients derive `deviceIdentifier` from
+the most stable identity each platform allows — `ANDROID_ID` on Android,
+`identifierForVendor` on iOS. IMEI is not available to apps on either platform
+and never will be. Because those survive a reinstall, a returning device sends
+`reclaim: true` and gets its existing record back with a fresh token, keeping
+its history rather than becoming a duplicate. The flag is opt-in, so an
+accidental double-registration still fails with a 409.
 
 **Ownership is never client-supplied.** Every query filters on the authenticated user id. A device belonging to someone else answers `404`, not `403`, so ids cannot be probed for existence.
 

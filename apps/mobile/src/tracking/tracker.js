@@ -1,7 +1,6 @@
 import * as Location from "expo-location";
 import * as TaskManager from "expo-task-manager";
 import * as Battery from "expo-battery";
-import * as Notifications from "expo-notifications";
 
 import * as storage from "../lib/storage";
 import * as api from "../lib/api";
@@ -151,6 +150,12 @@ export const sendHeartbeat = async () => {
  */
 const requestNotificationPermission = async () => {
   try {
+    // Required lazily rather than imported: this module is evaluated by the
+    // background task at bundle load, and expo-notifications is restricted in
+    // Expo Go on Android. A missing or unhappy module should cost us a badge,
+    // not the whole app.
+    const Notifications = require("expo-notifications");
+
     const existing = await Notifications.getPermissionsAsync();
 
     if (existing.granted) {
